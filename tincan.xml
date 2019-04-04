@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<tincan xmlns="http://projecttincan.com/tincan.xsd">
+    <activities>
+        <activity id="https://nachocinalli.github.io/cooking-up-a-xapi/" type="http://adlnet.gov/expapi/activities/course">
+            <name><![CDATA[Cooking up a xAPI]]></name>
+            <description lang="en-US"><![CDATA[A sample course demonstrating the capabilities of the Adapt Framework and xAPI specification]]></description>
+            <launch lang="en-US">index.html</launch>
+        </activity>
+    </activities>
+</tincan>

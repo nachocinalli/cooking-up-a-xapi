@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Cooking up a xAPI: the task-completed course</title>
+    <link href="https://fonts.googleapis.com/css?family=Roboto+Slab:300,400,700" rel="stylesheet">
+    <script type="text/javascript" src="js/xapiwrapper.min.js"></script>
+</head>
+
+<body>
+    <style>
+        body {
+            font-family: 'Roboto Slab', serif;
+            color: white;
+            background-color: #F0F3F4;
+
+        }
+
+        #app-bg.loaded {
+            opacity: 1;
+        }
+
+        #app-bg {
+            opacity: 0;
+            transition: opacity .6s;
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 594px;
+
+            background-image: url('photo-1.jpg');
+            background-repeat: no-repeat;
+            background-position-y: center;
+            background-size: cover;
+            background-blend-mode: multiply;
+            background-color: #6E8CA0
+        }
+
+        button {
+
+            background-color: #6E8CA0;
+            color: #ffffff;
+            padding: 14px 24px 14px 24px;
+            text-decoration: none;
+            text-align: center;
+            display: inline-block;
+            border: 0px solid #6E8CA0;
+        }
+
+        canvas {
+            display: none;
+        }
+
+
+        input[type="file"] {
+            display: block;
+            margin-bottom: 16px;
+        }
+
+        input,
+        label {
+            vertical-align: middle
+        }
+
+        .qrcode-text {
+            padding-right: 1.7em;
+            margin-right: 0
+        }
+
+        .qrcode-text-btn {
+            display: inline-block;
+            background: url('qr_icon.svg') 50% 50% no-repeat;
+            height: 44px;
+            width: 80px;
+           /* margin-left: -1.7em;*/
+            cursor: pointer
+        }
+
+        .qrcode-text-btn>input[type=file] {
+            position: absolute;
+            overflow: hidden;
+            width: 1px;
+            height: 1px;
+            opacity: 0
+        }
+
+        div {
+            margin-bottom: 16px;
+        }
+
+        .wrapper {
+            max-width: 1024px;
+            margin: auto;
+            position: relative;
+        }
+
+        .header {
+            text-align: center;
+            padding: 100px 0 100px;
+            color: white
+        }
+
+        .header h4 {
+            font-size: 24px
+        }
+
+        .json-container {
+            white-space: pre;
+            font-family: monospace;
+            display: none;
+            background-color: #D97D54;
+            color: white;
+            padding: 60px;
+        }
+
+        .section-qr .section-inner {
+            background-color: #D97D54;
+            padding: 20px;
+            min-height: 450px;
+            color: white;
+
+
+            border-radius: 20px;
+            box-shadow: 0 5px 10px rgba(80, 92, 98, .13);
+        }
+
+        .section-qr-cam .section-inner {
+            background-color: #87BCBF;
+            margin-right: 1%
+        }
+
+        .section-qr-file .section-inner {
+            margin-left: 1%
+        }
+
+        .wrapper.task-completed .json-container {
+            display: block
+        }
+
+        .wrapper.task-completed .section-qr {
+            display: none
+        }
+
+        video#qr-video {
+            position: relative;
+            max-width: 450px;
+        }
+
+        @media (min-width: 768px) {
+            .section-qr {
+                float: left;
+                width: 50%;
+            }
+
+            .header h1 {
+                font-size: 48px
+            }
+        }
+    </style>
+    <div id="app">
+        <div id="app-bg"></div>
+        <div class="wrapper">
+            <div class="section header">
+                <h1>Cooking up a xAPI</h1>
+                <h4>The task-completed course</h4>
+            </div>
+            <div class="section task-completed-container"></div>
+            <div class="section json-container"></div>
+            <div class="section section-qr section-qr-cam">
+                <div class="section-inner">
+                    <h2>Scan from WebCam:</h2>
+                    <div>
+                        <p>Device has camera: 
+                        <span id="cam-has-camera"></span>
+                       
+                        <br>
+                        <p>Detected QR code:
+                            <span id="cam-qr-result">None</span>
+
+                           
+                        </p>
+                    </p>
+                        <div>
+                                <button id="button-scan">Scan</button>
+                        </div>
+                        <video muted playsinline id="qr-video"></video>
+                    </div>
+                   
+
+                </div>
+            </div>
+            <div class="section section-qr section-qr-file">
+                <div class="section-inner">
+                    <div>
+                    <h2>Scan from File:</h2>
+                    <p>Detected QR code: </p>
+                </div>
+                    <div>
+                        <div>Select the icon below:</div>
+                        <label class="qrcode-text-btn">
+                            <input type="file" id="file-selector" class="">
+                            <span  id="file-qr-result"></span>
+                        </label>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+    <script type="module">
+        import QrScanner from "./js/qr-scanner.min.js";
+
+        QrScanner.WORKER_PATH = './js/qr-scanner-worker.min.js';
+
+        var video = document.getElementById('qr-video');
+        var camHasCamera = document.getElementById('cam-has-camera');
+        var camQrResult = document.getElementById('cam-qr-result');
+        var camQrResultTimestamp = document.getElementById('cam-qr-result-timestamp');
+        var fileSelector = document.getElementById('file-selector');
+        var fileQrResult = document.getElementById('file-qr-result');
+
+
+        function setResult(label, result) {
+           
+            try {
+		         actor = JSON.parse(result)
+		    } catch(e) {
+		        alert(e); // error in the above string (in this case, yes)!
+		    }
+            onGetActor()
+        }
+
+
+        QrScanner.hasCamera().then(hasCamera => camHasCamera.textContent = hasCamera);
+
+        var scanner = new QrScanner(video, result => setResult(camQrResult, result));
+      
+
+        fileSelector.addEventListener('change', event => {
+            var file = fileSelector.files[0];
+            if (!file) {
+                return;
+            }
+            QrScanner.scanImage(file)
+                .then(result => setResult(fileQrResult, result))
+                .catch(e => setResult(fileQrResult, e || 'No QR code found.'));
+        });
+        document.getElementById("button-scan").addEventListener("click", function () {
+            scanner.start();
+        });
+        var conf = {
+            "endpoint": "https://cloud.scorm.com/lrs/XOA0SJAT70/sandbox/",
+            "user": "8Re7pEo2tHkKhqHpAY4",
+            "password": "zIw52paGq61IJvYpXew",
+        };
+
+        ADL.XAPIWrapper.changeConfig(conf);
+        var actor = {};
+
+
+        function onGetActor() {
+            var stmt = new ADL.XAPIStatement(
+                new ADL.XAPIStatement.Agent(actor),
+                new ADL.XAPIStatement.Verb(ADL.verbs.attended),
+                new ADL.XAPIStatement.Activity('http://activitystrea.ms/schema/1.0/event','https://nachocinalli.github.io/cooking-up-a-xapi/#/id/co-3-4', 'xAPI Best Practices')
+            );
+            stmt.result = {success: true,completion: true,duration:'P1W'}
+            ADL.XAPIWrapper.sendStatement(stmt, function (resp, obj) {
+
+                if (resp.status == 200) {
+
+                    document.querySelector('.task-completed-container').innerHTML = "Awesome " + actor.name + "!<br><br>You completed the Workshop Offline: xAPI Best Practices."
+
+                    var jsonContainer = document.querySelector('.json-container')
+                    jsonContainer.innerHTML = ""
+                    
+                    jsonContainer.appendChild(document.createTextNode(JSON.stringify(stmt, null, 4)))
+
+
+                    var wrapper = document.querySelector('.wrapper');
+                    wrapper.classList.add('task-completed');
+                }
+            });
+            scanner.destroy();
+            scanner = null;
+        }
+        document.addEventListener("DOMContentLoaded", function (event) {
+            document.getElementById("app-bg").className = "loaded";
+        })
+    </script>
+</body>
+
+</html>
